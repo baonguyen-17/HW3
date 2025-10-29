@@ -256,21 +256,6 @@ int main(int argc, char **argv){
             }
             lexeme[j] = '\0';
 
-            // If next character is alphabetic, treat as invalid token
-            if (isalpha((unsigned char)buffer[i])) 
-            {
-                // Consume the rest of the alphanumeric or underscore sequence
-                while ((isalpha((unsigned char)buffer[i]) || isdigit((unsigned char)buffer[i]) || buffer[i] == '_')) 
-                {
-                    i++;
-                }
-
-                tokens[tokenCount] = skipsym;
-                saved[tokenCount]  = NULL;
-                tokenCount++;
-                continue;
-            }
-
             // If number too long
             if (!checkNumber(lexeme)) 
             {
