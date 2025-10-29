@@ -225,6 +225,9 @@ int main(int argc, char **argv){
         
         // Checks for just ":" if alone
         if (buffer[i] == ':') {
+            tokens[tokenCount] = skipsym;
+            saved[tokenCount]  = NULL;
+            tokenCount++;
             i++;
             continue;
         }
@@ -241,24 +244,43 @@ int main(int argc, char **argv){
             continue;
         }
 
-
         // Checks for integers
         if (isdigit((unsigned char)buffer[i])) 
         {
             int j = 0;
+
+            // Collect digits into lexeme
             while (isdigit((unsigned char)buffer[i]) && j + 1 < (int)sizeof(lexeme)) 
             {
                 lexeme[j++] = buffer[i++];
             }
             lexeme[j] = '\0';
 
-            // If number too long, skip
-            if (!checkNumber(lexeme)) 
+            // If next character is alphabetic, treat as invalid token
+            if (isalpha((unsigned char)buffer[i])) 
             {
+                // Consume the rest of the alphanumeric or underscore sequence
+                while ((isalpha((unsigned char)buffer[i]) || isdigit((unsigned char)buffer[i]) || buffer[i] == '_')) 
+                {
+                    i++;
+                }
+
+                tokens[tokenCount] = skipsym;
+                saved[tokenCount]  = NULL;
+                tokenCount++;
                 continue;
             }
 
-            // otherwise, valid number
+            // If number too long
+            if (!checkNumber(lexeme)) 
+            {
+                tokens[tokenCount] = skipsym;
+                saved[tokenCount]  = NULL;
+                tokenCount++;
+                continue;
+            }
+
+            // Otherwise, valid number
             tokens[tokenCount] = numbersym;
             saved[tokenCount] = (char*)malloc(strlen(lexeme) + 1);
             strcpy(saved[tokenCount], lexeme);
@@ -277,7 +299,11 @@ int main(int argc, char **argv){
             lexeme[j] = '\0';
 
             // If too long, skip
-            if (strlen(lexeme) > 11) {
+            if (strlen(lexeme) > 11) 
+            {
+                tokens[tokenCount] = skipsym;
+                saved[tokenCount]  = NULL;
+                tokenCount++;
                 continue;
             }
 
@@ -297,8 +323,19 @@ int main(int argc, char **argv){
             continue;
         }
 
+        // Invalid symbol fallback
+        if (!isspace((unsigned char)buffer[i]))
+        {
+            tokens[tokenCount] = skipsym;
+            saved[tokenCount]  = NULL;
+            tokenCount++;
+        }
+        i++;
+        continue;
+
+
         i++; //skip invalid
-        
+ 
     }
     
     // Creates tokens text file
@@ -308,9 +345,12 @@ int main(int argc, char **argv){
         return 1;
     }
 
-    for (int j = 0; j < tokenCount; j++) {
+    for (int j = 0; j < tokenCount; j++) 
+    {
         if (tokens[j] == identsym || tokens[j] == numbersym)
+        {
             fprintf(out, "%d %s\n", (int)tokens[j], saved[j]);
+        }
         else
             fprintf(out, "%d\n", (int)tokens[j]);
     }
