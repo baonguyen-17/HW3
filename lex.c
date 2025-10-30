@@ -338,8 +338,6 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    printf("Token Count: %i\n", tokenCount);
-
     for (int j = 0; j < tokenCount; j++) 
     {
         if (tokens[j] == identsym || tokens[j] == numbersym)
