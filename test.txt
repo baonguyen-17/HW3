@@ -1,10 +1,5 @@
+const z = 5;
+var xcjioasunihujacioj, y;
 begin
-x := 123456;
-loooooooo1234x
-end .
-4lpha
-a+b
-/* test 
-*/ */
-
-*/ hello
+xcjioasunihujacioj := y * 2;
+end.

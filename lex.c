@@ -68,38 +68,7 @@ typedef enum {
     evensym // even
 } TokenType;
 
-int checkNumber(const char *s)
-{
-    size_t n = strlen(s);
-
-    // Returns 0 if number is too long or empty
-    if (n == 0 || n > 5)
-    {
-        return 0;
-    }
-
-    //otherwise return number string
-    return strspn(s, "0123456789") == n;
-}
-
-int checkAlphabet(const char *s)
-{
-    size_t n = strlen(s);
-
-    // Returns 0 if too long or empty
-    if (n == 0 || n > 11)
-    {
-        return 0;
-    }
-
-    if (!(isalpha((unsigned char)s[0])))
-    {
-        return 0;
-    }
-
-    return strspn(s + 1, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")
-           == (n - 1);
-}
+TokenType lexemeToToken(const char *lex);
 
 TokenType lexemeToToken(const char *lex) 
 {
@@ -136,21 +105,13 @@ TokenType lexemeToToken(const char *lex)
     else if (strcmp(lex, "else")  == 0) return elsesym;
     else if (strcmp(lex, "even")  == 0) return evensym;
 
-    else if (checkNumber(lex))
-    {
-        return numbersym;
-    }
-
-    else if (checkAlphabet(lex))
-    {
-        return identsym;
-    }
+    else return identsym;
 
     // return if error
     return skipsym;
 }
 
-int main(int argc, char **argv){
+int main(int argc, char** argv){
     FILE* ptr;
     ptr = fopen(argv[1], "r");
     if (ptr == NULL) {
@@ -171,16 +132,23 @@ int main(int argc, char **argv){
     if (buffer) {
         int read = fread(buffer, 1, fileLen, ptr);
     }
+    fclose(ptr);
     
-    int i = 0, j = 0, tokenCount = 0, countSaved = 0;
-    char lexeme[500];
+    int i = 0, tokenCount = 0;
+
+    // Placeholder for each recorded lexeme
+    char lexeme[12];
+
+    // Recorded token array
     TokenType tokens[500];  
+
+    // Allocated mem array for proper identifier & number strings
     char *saved[600] = {0};
 
     while (buffer[i] != '\0')
     {
         // If character is a space move to next spot in array
-        if (isspace((unsigned char)buffer[i]))
+        if (isspace(buffer[i]))
         {
             i++;
             continue;
@@ -191,8 +159,7 @@ int main(int argc, char **argv){
             (buffer[i] == '>' && buffer[i + 1] == '=') ||
             (buffer[i] == ':' && buffer[i + 1] == '='))
         {
-            lexeme[0] = buffer[i];
-            lexeme[1] = buffer[i+1];
+            strncpy(lexeme, buffer + i, 2);
             lexeme[2] = '\0';
             i += 2;
 
@@ -204,6 +171,8 @@ int main(int argc, char **argv){
                 saved[tokenCount] = NULL;
                 tokenCount++;
             }
+
+            strcpy(lexeme, ""); // Clear placeholder
             continue;
         }
 
@@ -224,7 +193,8 @@ int main(int argc, char **argv){
         }
         
         // Checks for just ":" if alone
-        if (buffer[i] == ':') {
+        if (buffer[i] == ':')
+        {
             tokens[tokenCount] = skipsym;
             saved[tokenCount]  = NULL;
             tokenCount++;
@@ -233,80 +203,121 @@ int main(int argc, char **argv){
         }
 
         // Checks for single character symbols
-        if (buffer[i]=='+'||buffer[i]=='-'||buffer[i]=='*'||buffer[i]=='/'||
-            buffer[i]=='='||buffer[i]=='('||buffer[i]==')'||buffer[i]==','||
-            buffer[i]==';'||buffer[i]=='.'||buffer[i]=='<'||buffer[i]=='>') {
-            char s[2]={buffer[i++],'\0'};
-            TokenType t = lexemeToToken(s);
+        if (buffer[i] == '+'||
+            buffer[i] == '-'||
+            buffer[i] == '*'||
+            buffer[i] == '/'||
+            buffer[i] == '='||
+            buffer[i] == '('||
+            buffer[i] == ')'||
+            buffer[i] == ','||
+            buffer[i] == ';'||
+            buffer[i] == '.'||
+            buffer[i] == '<'||
+            buffer[i] == '>') 
+        {
+            strncpy(lexeme, buffer + i, 1);
+            lexeme[1] = '\0';
+            i += 1;
+
+            TokenType t = lexemeToToken(lexeme);
+
             tokens[tokenCount] = t;
             saved[tokenCount] = NULL;
+            
             tokenCount++;
+            strcpy(lexeme, ""); // Clear placeholder
             continue;
         }
 
         // Checks for integers
-        if (isdigit((unsigned char)buffer[i])) 
+        if (isdigit(buffer[i])) 
         {
+            // Copy num string into lexeme (max 5 digits)
             int j = 0;
-
-            // Collect digits into lexeme
-            while (isdigit((unsigned char)buffer[i]) && j + 1 < (int)sizeof(lexeme)) 
+            
+            while (isdigit(buffer[i]) && j < 5)
             {
-                lexeme[j++] = buffer[i++];
+                lexeme[j] = buffer[i];
+                i++;
+                j++;
             }
-            lexeme[j] = '\0';
+            lexeme[j] = '\0';   // End string
 
-            // If number too long
-            if (!checkNumber(lexeme)) 
+            // If there are more digits than the max, assign error token & move to end of string
+            if (isdigit(buffer[i]))
             {
                 tokens[tokenCount] = skipsym;
-                saved[tokenCount]  = NULL;
-                tokenCount++;
-                continue;
-            }
-
-            // Otherwise, valid number
-            tokens[tokenCount] = numbersym;
-            saved[tokenCount] = (char*)malloc(strlen(lexeme) + 1);
-            strcpy(saved[tokenCount], lexeme);
-            tokenCount++;
-            continue;
-        }
-        
-        // Checks for identifiers
-        if (isalpha((unsigned char)buffer[i])) 
-        {
-            int j = 0;
-            while ((isalpha((unsigned char)buffer[i]) || isdigit((unsigned char)buffer[i]) || buffer[i]=='_') &&
-                j + 1 < (int)sizeof(lexeme)) {
-                lexeme[j++] = buffer[i++];
-            }
-            lexeme[j] = '\0';
-
-            // If too long, skip
-            if (strlen(lexeme) > 11) 
-            {
-                tokens[tokenCount] = skipsym;
-                saved[tokenCount]  = NULL;
-                tokenCount++;
-                continue;
-            }
-
-            /* now it's safe to ask if it is a reserved word vs identifier */
-            TokenType t = lexemeToToken(lexeme);
-            tokens[tokenCount] = t;
-
-            if (t == identsym) 
-            {
-                saved[tokenCount] = (char*)malloc(strlen(lexeme) + 1);
-                strcpy(saved[tokenCount], lexeme);
-            } else 
-            {
                 saved[tokenCount] = NULL;
+                
+                while (isdigit(buffer[i]))
+                {
+                    i++;
+                }
             }
+            
+            // Else, save string to mem
+            else
+            {
+                tokens[tokenCount] = numbersym;
+                saved[tokenCount] = (char*) malloc(strlen(lexeme) + 1);
+                strcpy(saved[tokenCount], lexeme);
+            }
+            
             tokenCount++;
+            strcpy(lexeme, ""); // Clear placeholder
             continue;
         }
+
+
+        // Checks for identifier
+        if (isalpha(buffer[i]))
+        {
+            // Copy string into lexeme (must be letter, followed by letter/number) (max 11 chars)
+            int j = 0;
+            lexeme[j] = buffer[i];
+            i++;
+            j++;
+            while (isalnum(buffer[i]) && j < 10)
+            {
+                lexeme[j] = buffer[i];
+                i++;
+                j++;
+            }
+            lexeme[j] = '\0';   // End string
+
+            // If there are more chars/nums after max, assign the error token & move to end of string
+            if (isalnum(buffer[i]))
+            {
+                tokens[tokenCount] = skipsym;
+                saved[tokenCount] = NULL;
+                
+                while (isalnum(buffer[i]))
+                {
+                    i++;
+                }
+            }            
+            
+            // If not, check if it is reserved word
+            else
+            {
+                TokenType t = lexemeToToken(lexeme);
+                tokens[tokenCount] = t;
+
+                if (t == identsym)
+                {
+                    saved[tokenCount] = (char*) malloc(strlen(lexeme) + 1);
+                    strcpy(saved[tokenCount], lexeme);
+                }
+                else
+                    saved[tokenCount] = NULL;
+            }
+
+            tokenCount++;
+            strcpy(lexeme, ""); // Clear placeholder
+            continue;
+        }
+
 
         // Invalid symbol fallback
         if (!isspace((unsigned char)buffer[i]))
@@ -314,12 +325,9 @@ int main(int argc, char **argv){
             tokens[tokenCount] = skipsym;
             saved[tokenCount]  = NULL;
             tokenCount++;
+            i++;
+            continue;
         }
-        i++;
-        continue;
-
-
-        i++; //skip invalid
  
     }
     
@@ -330,14 +338,16 @@ int main(int argc, char **argv){
         return 1;
     }
 
+    printf("Token Count: %i\n", tokenCount);
+
     for (int j = 0; j < tokenCount; j++) 
     {
         if (tokens[j] == identsym || tokens[j] == numbersym)
         {
-            fprintf(out, "%d %s\n", (int)tokens[j], saved[j]);
+            fprintf(out, "%d %s\n", tokens[j], saved[j]);
         }
         else
-            fprintf(out, "%d\n", (int)tokens[j]);
+            fprintf(out, "%d\n", tokens[j]);
     }
     fclose(out);
 
@@ -347,7 +357,6 @@ int main(int argc, char **argv){
         free(saved[j]);
     }
     free(buffer);
-    fclose(ptr);
     return 0;
 }
 
